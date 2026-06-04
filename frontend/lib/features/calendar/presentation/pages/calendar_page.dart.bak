@@ -1,0 +1,854 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:smart_calendar/core/router/app_router.dart';
+import 'package:smart_calendar/core/theme/app_theme.dart';
+import 'package:smart_calendar/features/event/domain/entities/event_entity.dart';
+import 'package:smart_calendar/features/event/presentation/providers/event_provider.dart';
+import 'package:smart_calendar/features/event/presentation/widgets/event_card.dart';
+import 'package:smart_calendar/features/event/presentation/widgets/fab_speed_dial.dart';
+import 'package:smart_calendar/core/services/holiday_service.dart';
+import 'package:smart_calendar/core/services/calendar_service.dart';
+import 'package:smart_calendar/core/services/calendar_service.dart';
+import 'package:smart_calendar/features/settings/presentation/pages/settings_page.dart';
+import 'package:smart_calendar/features/auth/presentation/providers/auth_provider.dart';
+
+class CalendarPage extends ConsumerStatefulWidget {
+  const CalendarPage({super.key});
+
+  @override
+  ConsumerState<CalendarPage> createState() => _CalendarPageState();
+}
+
+class _CalendarPageState extends ConsumerState<CalendarPage>
+    with SingleTickerProviderStateMixin {
+  DateTime _focusedDay = DateTime.now();
+  DateTime _selectedDay = DateTime.now();
+  CalendarFormat _format = CalendarFormat.month;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final monthKey = '${_focusedDay.year}-${_focusedDay.month.toString().padLeft(2, "0")}';
+    final holidayAsync = ref.watch(holidayProvider(monthKey));
+    final holidays = holidayAsync.valueOrNull ?? {};
+    final service = ref.read(holidayServiceProvider);
+    final eventsByDay = ref.watch(eventsByDayProvider);
+    final eventsAsync = ref.watch(eventNotifierProvider);
+
+    List<EventEntity> markersForDay(DateTime day) {
+      final key = DateTime(day.year, day.month, day.day);
+      final all = eventsByDay[key] ?? [];
+      return all.where((e) {
+        if (!e.isMultiDay) return true;
+        final start = DateTime(e.startAt.year, e.startAt.month, e.startAt.day);
+        final end = DateTime(e.endAt!.year, e.endAt!.month, e.endAt!.day);
+        final d = DateTime(day.year, day.month, day.day);
+        return isSameDay(d, start) || isSameDay(d, end);
+      }).toList();
+    }
+
+    List<EventEntity> eventsForDay(DateTime day) {
+      final key = DateTime(day.year, day.month, day.day);
+      final d = DateTime(day.year, day.month, day.day);
+      final all = eventsByDay[key] ?? [];
+      return all.where((e) {
+        if (!e.isMultiDay) return true;
+        // 장기일정은 시작일 또는 종료일에만 표시
+        final start = DateTime(e.startAt.year, e.startAt.month, e.startAt.day);
+        final end = DateTime(e.endAt!.year, e.endAt!.month, e.endAt!.day);
+        return isSameDay(d, start) || isSameDay(d, end);
+      }).toList();
+    }
+
+    List<EventEntity> ongoingEvents() {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final all = eventsAsync.valueOrNull ?? [];
+      return all.where((e) {
+        if (!e.isMultiDay) return false;
+        final start = DateTime(e.startAt.year, e.startAt.month, e.startAt.day);
+        final end = DateTime(e.endAt!.year, e.endAt!.month, e.endAt!.day);
+        return !today.isBefore(start) && !today.isAfter(end);
+      }).toList();
+    }
+
+    final selectedEvents = eventsForDay(_selectedDay);
+    final ongoing = ongoingEvents();
+
+    return Scaffold(
+      backgroundColor: cs.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: Text(
+          DateFormat('yyyy년 M월', 'ko').format(_focusedDay),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.today_rounded),
+            onPressed: () {
+              final now = DateTime.now();
+              setState(() { _focusedDay = now; _selectedDay = now; });
+              ref.read(eventNotifierProvider.notifier).loadMonth(now.year, now.month);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            ),
+          ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: cs.primary,
+          labelColor: cs.primary,
+          unselectedLabelColor: cs.onSurfaceVariant,
+          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          tabs: [
+            const Tab(text: '월간 캘린더'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('진행 중'),
+                  if (ongoing.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(10)),
+                      child: Text('${ongoing.length}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: theme.cardTheme.color, borderRadius: BorderRadius.circular(20)),
+                child: TableCalendar<EventEntity>(
+                  locale: 'ko_KR',
+                  firstDay: DateTime(2020),
+                  lastDay: DateTime(2030),
+                  focusedDay: _focusedDay,
+                  selectedDayPredicate: (d) => isSameDay(d, _selectedDay),
+                  calendarFormat: _format,
+                  eventLoader: markersForDay,
+                  startingDayOfWeek: StartingDayOfWeek.sunday,
+                  headerVisible: false,
+                  daysOfWeekStyle: DaysOfWeekStyle(
+                    weekdayStyle: theme.textTheme.labelMedium!.copyWith(color: cs.onSurfaceVariant),
+                    weekendStyle: theme.textTheme.labelMedium!.copyWith(color: AppColors.accent),
+                  ),
+                  calendarStyle: CalendarStyle(
+                    outsideDaysVisible: false,
+                    todayDecoration: BoxDecoration(color: cs.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
+                    todayTextStyle: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                    selectedDecoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
+                    selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                    markerDecoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
+                    markersMaxCount: 0,
+                    markerSize: 0,
+                    markerMargin: EdgeInsets.zero,
+                    cellMargin: const EdgeInsets.all(4),
+                    defaultTextStyle: theme.textTheme.bodyMedium!.copyWith(color: cs.onSurface),
+                    weekendTextStyle: theme.textTheme.bodyMedium!.copyWith(color: AppColors.accent),
+                  ),
+                  calendarBuilders: CalendarBuilders(
+                    markerBuilder: (ctx, day, events) {
+                      if (events.isEmpty) return const SizedBox.shrink();
+                      return Positioned(
+                        bottom: 4,
+                        left: 2,
+                        right: 2,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: events.take(3).map((e) {
+                            final ev = e as EventEntity;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 1),
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: ev.category.color,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      ev.title,
+                                      style: const TextStyle(
+                                        fontSize: 7,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                    defaultBuilder: (ctx, day, _) {
+                      if (service.isHoliday(day, holidays)) {
+                        return Center(
+                          child: Text(
+                            '${day.day}',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        );
+                      }
+                      return null;
+                    },
+                    todayBuilder: (ctx, day, _) {
+                      final isHol = service.isHoliday(day, holidays);
+                      return Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${day.day}',
+                            style: TextStyle(
+                              color: isHol ? Colors.red : cs.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    selectedBuilder: (ctx, day, _) {
+                      final isHol = service.isHoliday(day, holidays);
+                      return Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isHol ? Colors.red : cs.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${day.day}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  onDaySelected: (selected, focused) {
+                    setState(() { _selectedDay = selected; _focusedDay = focused; });
+                  },
+                  onFormatChanged: (fmt) => setState(() => _format = fmt),
+                  onPageChanged: (focused) {
+                    setState(() => _focusedDay = focused);
+                    ref.read(eventNotifierProvider.notifier).loadMonth(focused.year, focused.month);
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Row(
+                  children: [
+                    _FormatChip(label: '월', selected: _format == CalendarFormat.month, onTap: () => setState(() => _format = CalendarFormat.month)),
+                    const SizedBox(width: 8),
+                    _FormatChip(label: '2주', selected: _format == CalendarFormat.twoWeeks, onTap: () => setState(() => _format = CalendarFormat.twoWeeks)),
+                    const SizedBox(width: 8),
+                    _FormatChip(label: '주', selected: _format == CalendarFormat.week, onTap: () => setState(() => _format = CalendarFormat.week)),
+                    const Spacer(),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(DateFormat('M월 d일 (E)', 'ko').format(_selectedDay), style: theme.textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
+                        if (service.getName(_selectedDay, holidays) != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              service.getName(_selectedDay, holidays)!,
+                              style: const TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: eventsAsync.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : selectedEvents.isEmpty
+                        ? _EmptyDayState(date: _selectedDay)
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                            itemCount: selectedEvents.length,
+                            itemBuilder: (ctx, i) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: EventCard(
+                                event: selectedEvents[i],
+                                onTap: () => context.push(AppRoutes.eventDetail(selectedEvents[i].id)),
+                                onDelete: () => ref.read(eventNotifierProvider.notifier).deleteEvent(selectedEvents[i].id),
+                              ),
+                            ),
+                          ),
+              ),
+            ],
+          ),
+          ongoing.isEmpty
+              ? _EmptyOngoingState()
+              : _OngoingCheckList(events: ongoing),
+        ],
+      ),
+      drawer: _CalendarDrawer(),
+      floatingActionButton: FabSpeedDial(
+        onAddEvent: () => context.push(AppRoutes.createEvent),
+        onOcr: () => context.push(AppRoutes.ocrScan),
+      ),
+    );
+  }
+}
+
+class _FormatChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _FormatChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? cs.primary : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Colors.white : cs.onSurfaceVariant)),
+      ),
+    );
+  }
+}
+
+class _EmptyDayState extends StatelessWidget {
+  final DateTime date;
+  const _EmptyDayState({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event_available_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+          const SizedBox(height: 12),
+          Text('일정이 없어요', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text('+ 버튼으로 새 일정을 추가해보세요', style: theme.textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Ongoing CheckList ─────────────────────────────────────────
+class _OngoingCheckList extends StatefulWidget {
+  final List<EventEntity> events;
+  const _OngoingCheckList({required this.events});
+
+  @override
+  State<_OngoingCheckList> createState() => _OngoingCheckListState();
+}
+
+class _OngoingCheckListState extends State<_OngoingCheckList> {
+  // eventId -> Set<항목인덱스> 체크된 항목들
+  final Map<String, Set<int>> _checked = {};
+
+  List<String> _parseItems(EventEntity e) {
+    final items = <String>[];
+    // 시작~종료 기간 항목
+    items.add('${DateFormat('M.d').format(e.startAt)} ~ ${DateFormat('M.d').format(e.endAt!)}  기간');
+    // memo 에서 줄바꿈/쉼표로 구분된 항목 파싱
+    if (e.memo != null && e.memo!.isNotEmpty) {
+      final parts = e.memo!.split(RegExp(r'[,\n]'));
+      for (final p in parts) {
+        final t = p.trim();
+        if (t.isNotEmpty) items.add(t);
+      }
+    }
+    // location
+    if (e.location != null && e.location!.isNotEmpty) {
+      items.add('장소: ${e.location}');
+    }
+    return items;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      itemCount: widget.events.length,
+      itemBuilder: (ctx, i) {
+        final e = widget.events[i];
+        final color = e.category.color;
+        final remaining = e.endAt!.difference(DateTime.now()).inDays + 1;
+        final items = _parseItems(e);
+        final checked = _checked[e.id] ?? {};
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(16),
+            border: Border(left: BorderSide(color: color, width: 4)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── 제목 + D-day ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        e.title,
+                        style: theme.textTheme.titleSmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: remaining <= 7
+                            ? AppColors.accent.withValues(alpha: 0.12)
+                            : color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'D-$remaining',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: remaining <= 7 ? AppColors.accent : color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                // ── 체크리스트 항목들 ──
+                ...items.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final label = entry.value;
+                  final isDone = checked.contains(idx);
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        final s = _checked.putIfAbsent(e.id, () => {});
+                        if (isDone) s.remove(idx); else s.add(idx);
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                            size: 18,
+                            color: isDone ? color : cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: isDone
+                                    ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                                    : cs.onSurface,
+                                decoration: isDone ? TextDecoration.lineThrough : null,
+                                decorationColor: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _EmptyOngoingState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.pending_actions_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+          const SizedBox(height: 12),
+          Text('진행 중인 일정이 없어요', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text('기간이 있는 일정이 여기에 표시돼요', style: theme.textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Calendar Drawer ───────────────────────────────────────────
+class _CalendarDrawer extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final user = ref.watch(authNotifierProvider).valueOrNull;
+
+    return Drawer(
+      backgroundColor: cs.surface,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── 프로필 영역 ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: cs.primaryContainer,
+                    child: Text(
+                      user?.name.isNotEmpty == true
+                          ? user!.name[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.name ?? '',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          user?.username ?? '',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.settings_outlined,
+                        color: cs.onSurfaceVariant),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SettingsPage()),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            // ── 내 캘린더 섹션 ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('내 캘린더',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                          color: cs.onSurfaceVariant)),
+                  Icon(Icons.add_rounded,
+                      color: cs.onSurfaceVariant, size: 20),
+                ],
+              ),
+            ),
+            _CalendarList(),
+            const Divider(height: 24),
+            const Spacer(),
+            const Divider(),
+            // ── 로그아웃 ──
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              leading: const Icon(Icons.logout_rounded, color: Colors.red),
+              title: const Text(
+                '로그아웃',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('로그아웃'),
+                    content: const Text('정말 로그아웃 하시겠어요?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('취소'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('로그아웃',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  await ref.read(authNotifierProvider.notifier).logout();
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Calendar List in Drawer ───────────────────────────────────
+class _CalendarList extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final calendars = ref.watch(calendarProvider);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Column(
+      children: [
+        ...calendars.map((cal) => ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          leading: Container(
+            width: 16, height: 16,
+            decoration: BoxDecoration(
+              color: cal.color,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          title: Text(cal.name,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w500)),
+          trailing: ['personal','school','work','health'].contains(cal.id)
+              ? null
+              : GestureDetector(
+                  onTap: () => ref.read(calendarProvider.notifier).remove(cal.id),
+                  child: Icon(Icons.close_rounded, size: 16, color: cs.onSurfaceVariant),
+                ),
+        )),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          leading: Icon(Icons.add_rounded, color: cs.primary, size: 18),
+          title: Text('캘린더 추가',
+              style: TextStyle(color: cs.primary, fontSize: 13, fontWeight: FontWeight.w600)),
+          onTap: () => _showAddCalendar(context, ref),
+        ),
+      ],
+    );
+  }
+
+  void _showAddCalendar(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    Color selected = const Color(0xFF6366F1);
+    final colors = [
+      const Color(0xFF6366F1), const Color(0xFF10B981),
+      const Color(0xFFF59E0B), const Color(0xFFEF4444),
+      const Color(0xFF3B82F6), const Color(0xFFEC4899),
+      const Color(0xFF8B5CF6), const Color(0xFF14B8A6),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20,
+              MediaQuery.of(ctx).viewInsets.bottom + 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('캘린더 추가',
+                  style: Theme.of(ctx).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: '캘린더 이름',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('색상', style: Theme.of(ctx).textTheme.labelLarge),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                children: colors.map((c) => GestureDetector(
+                  onTap: () => setState(() => selected = c),
+                  child: Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(
+                      color: c,
+                      shape: BoxShape.circle,
+                      border: selected == c
+                          ? Border.all(color: Colors.black, width: 3)
+                          : null,
+                    ),
+                  ),
+                )).toList(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (controller.text.trim().isNotEmpty) {
+                      ref.read(calendarProvider.notifier)
+                          .add(controller.text.trim(), selected);
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: selected,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('추가', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+class _DrawerCalendarItem extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _DrawerCalendarItem({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+      leading: Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+      title: Text(label,
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(fontWeight: FontWeight.w500)),
+    );
+  }
+}

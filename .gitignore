@@ -1,0 +1,34 @@
+# Flutter
+**/android/local.properties
+**/android/.gradle
+**/android/key.properties
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+**/*.g.dart
+**/*.freezed.dart
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+
+# Backend
+backend/__pycache__/
+backend/*.db
+backend/uploads/
+backend/.env
+
+# Frontend
+frontend/.env
+frontend/.dart_tool/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.iml
