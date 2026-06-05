@@ -90,7 +90,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'LeaveIt 계정으로 로그인하세요.',
+                  '일.내.조 계정으로 로그인하세요.',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 36),

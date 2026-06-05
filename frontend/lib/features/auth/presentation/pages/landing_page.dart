@@ -20,7 +20,7 @@ class LandingPage extends StatelessWidget {
               const Spacer(flex: 3),
 
               Text(
-                'LeaveIt',
+                '일.내.조',
                 style: theme.textTheme.displayMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: -1,

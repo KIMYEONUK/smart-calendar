@@ -33,7 +33,7 @@ class AppColors {
   // ─── Event Category Colors ───────────────────────────────
   static const Color eventPersonal = Color(0xFF4A6CF7);
   static const Color eventWork = Color(0xFFFF6B6B);
-  static const Color eventHealth = Color(0xFF52C41A);
+  static const Color eventHealth = Color(0xFFEF4444);
   static const Color eventSocial = Color(0xFFFFA940);
   static const Color eventOther = Color(0xFF9254DE);
 }

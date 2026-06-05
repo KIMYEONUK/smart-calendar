@@ -121,7 +121,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '아래 정보를 입력해 LeaveIt를 시작하세요.',
+                  '아래 정보를 입력해 일.내.조를 시작하세요.',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 32),

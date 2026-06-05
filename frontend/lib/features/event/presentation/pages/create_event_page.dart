@@ -12,7 +12,8 @@ import 'package:smart_calendar/core/services/calendar_service.dart';
 class CreateEventPage extends ConsumerStatefulWidget {
   final DateTime? initialStartAt;
   final DateTime? initialEndAt;
-  const CreateEventPage({super.key, this.initialStartAt, this.initialEndAt});
+  final EventEntity? editEvent;
+  const CreateEventPage({super.key, this.initialStartAt, this.initialEndAt, this.editEvent});
 
   @override
   ConsumerState<CreateEventPage> createState() => _CreateEventPageState();
@@ -50,13 +51,27 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   void initState() {
     super.initState();
     final form = _EventForm();
-    if (widget.initialStartAt != null) {
-      final d = widget.initialStartAt!;
-      form.startAt = DateTime(d.year, d.month, d.day, 9, 0);
-    }
-    if (widget.initialEndAt != null) {
-      final d = widget.initialEndAt!;
-      form.endAt = DateTime(d.year, d.month, d.day, 10, 0);
+    if (widget.editEvent != null) {
+      final e = widget.editEvent!;
+      form.titleCtrl.text = e.title;
+      form.locationCtrl.text = e.location ?? '';
+      form.emailCtrl.text = '';
+      form.memoCtrl.text = e.memo ?? '';
+      form.linkCtrl.text = e.link ?? '';
+      form.startAt = e.startAt;
+      form.endAt = e.endAt;
+      form.isAllDay = e.isAllDay;
+      form.category = e.category;
+      form.reminderMinutes = e.reminderMinutes;
+    } else {
+      if (widget.initialStartAt != null) {
+        final d = widget.initialStartAt!;
+        form.startAt = DateTime(d.year, d.month, d.day, 9, 0);
+      }
+      if (widget.initialEndAt != null) {
+        final d = widget.initialEndAt!;
+        form.endAt = DateTime(d.year, d.month, d.day, 10, 0);
+      }
     }
     _forms = [form];
   }
@@ -84,6 +99,23 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     setState(() => _saving = true);
 
     try {
+      if (widget.editEvent != null) {
+        final f = _forms.first;
+        final updated = widget.editEvent!.copyWith(
+          title: f.titleCtrl.text.trim(),
+          startAt: f.startAt,
+          endAt: f.endAt,
+          isAllDay: f.isAllDay,
+          category: f.category,
+          location: f.locationCtrl.text.trim().isEmpty ? null : f.locationCtrl.text.trim(),
+          memo: f.memoCtrl.text.trim().isEmpty ? null : f.memoCtrl.text.trim(),
+          link: f.linkCtrl.text.trim().isEmpty ? null : f.linkCtrl.text.trim(),
+          reminderMinutes: f.reminderMinutes,
+        );
+        await ref.read(eventNotifierProvider.notifier).updateEvent(updated);
+        if (mounted) context.pop();
+        return;
+      }
       for (final f in _forms) {
         final event = EventEntity(
           id: f.id,

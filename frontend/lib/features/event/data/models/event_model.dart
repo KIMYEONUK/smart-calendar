@@ -85,8 +85,8 @@ class EventModel {
 
   static Map<String, dynamic> fromEntity(EventEntity e) => {
         'title': e.title,
-        'start_at': e.startAt.toUtc().toIso8601String(),
-        if (e.endAt != null) 'end_at': e.endAt!.toUtc().toIso8601String(),
+        'start_at': e.startAt.toIso8601String(),
+        if (e.endAt != null) 'end_at': e.endAt!.toIso8601String(),
         'is_all_day': e.isAllDay,
         'category': e.category.name,
         if (e.location != null) 'location': e.location,

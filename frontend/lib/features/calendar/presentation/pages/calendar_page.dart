@@ -184,7 +184,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     final eventsByDay = ref.watch(eventsByDayProvider);
     final eventsAsync = ref.watch(eventNotifierProvider);
     final allEvents = eventsAsync.valueOrNull ?? [];
-    final ongoing = _ongoingEvents(allEvents);
+    final calendars = ref.watch(calendarProvider);
+    final visibleIds = calendars.where((c) => c.isVisible).map((c) => c.id).toSet();
+    final filteredEvents = allEvents.where((e) => visibleIds.contains(e.category.name)).toList();
+    final ongoing = _ongoingEvents(filteredEvents);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -248,7 +251,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
             holidays: holidays,
             holidayService: service,
             eventsByDay: eventsByDay,
-            allEvents: allEvents,
+            allEvents: filteredEvents,
             isLoading: eventsAsync.isLoading,
             onDaySelected: (day) {
               setState(() { _selectedDay = day; _focusedDay = day; });

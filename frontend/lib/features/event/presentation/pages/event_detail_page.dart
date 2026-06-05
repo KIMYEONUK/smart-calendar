@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:smart_calendar/features/event/data/datasources/photo_datasource.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:smart_calendar/features/event/presentation/pages/create_event_page.dart';
 
 class EventDetailPage extends ConsumerWidget {
   final String eventId;
@@ -33,6 +34,15 @@ class EventDetailPage extends ConsumerWidget {
         title: const Text('일정 상세'),
         centerTitle: true,
         actions: [
+          if (event != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => CreateEventPage(editEvent: event),
+                ),
+              ),
+            ),
           if (event != null)
             IconButton(
               icon: Icon(Icons.delete_outline_rounded, color: cs.error),
