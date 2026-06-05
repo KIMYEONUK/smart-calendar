@@ -14,7 +14,7 @@ class AppColors {
   static const Color accentOrange = Color(0xFFFA8C16);  // warning
 
   // ─── Backgrounds ─────────────────────────────────────────
-  static const Color bgLight = Color(0xFFF7F8FF);
+  static const Color bgLight = Color(0xFFF5F3F0);
   static const Color bgDark = Color(0xFF0D0F1A);
   static const Color surfaceDark = Color(0xFF151726);
   static const Color cardDark = Color(0xFF1C1F33);
@@ -63,7 +63,7 @@ class AppTheme {
       onErrorContainer: Color(0xFF410002),
       surface: AppColors.bgLight,
       onSurface: AppColors.textPrimary,
-      surfaceContainerHighest: Color(0xFFEEF0FF),
+      surfaceContainerHighest: Color(0xFFEAE8E5),
       onSurfaceVariant: AppColors.textSecondary,
       outline: Color(0xFFB0B7D3),
       outlineVariant: Color(0xFFDDE1FF),
@@ -90,9 +90,9 @@ class AppTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF5F3F0),
         surfaceTintColor: Colors.transparent,
-        indicatorColor: const Color(0xFFDDE1FF),
+        indicatorColor: const Color(0xFFEAE8E5),
         height: 64,
         elevation: 0,
         shadowColor: Colors.transparent,
@@ -158,7 +158,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFEEF0FF),
+        fillColor: const Color(0xFFEAE8E5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -191,7 +191,7 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       ),
       cardTheme: CardThemeData(
-        color: Colors.white,
+        color: const Color(0xFFEAE8E5),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -199,7 +199,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
       ),
       dividerTheme: const DividerThemeData(
-        color: Color(0xFFEEF0FF),
+        color: Color(0xFFE0DDD9),
         thickness: 1,
         space: 0,
       ),

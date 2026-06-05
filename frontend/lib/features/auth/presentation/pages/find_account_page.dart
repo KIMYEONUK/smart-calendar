@@ -43,7 +43,7 @@ class _FindAccountPageState extends ConsumerState<FindAccountPage> {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: const Color(0xFFF5F3F0),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.chevron_left_rounded, size: 28),
@@ -76,23 +76,54 @@ class _FindAccountPageState extends ConsumerState<FindAccountPage> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _send(),
+                      style: const TextStyle(color: Colors.black87),
                       decoration: InputDecoration(
-                        labelText: '이메일',
-                        prefixIcon: Icon(Icons.email_outlined,
-                            size: 20, color: cs.onSurfaceVariant),
+                        hintText: '이메일',
+                        hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
+                        prefixIcon: const Icon(Icons.email_outlined,
+                            size: 20, color: Colors.black38),
+                        filled: true,
+                        fillColor: const Color(0xFFEAE8E5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Colors.black26, width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       ),
                     ),
                     const Spacer(),
-                    FilledButton(
-                      onPressed: _loading ? null : _send,
-                      child: _loading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2.5, color: Colors.white),
-                            )
-                          : const Text('이메일 전송'),
+                    Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAE8E5),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: TextButton(
+                        onPressed: _loading ? null : _send,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.black87,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: _loading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.5, color: Colors.black54),
+                              )
+                            : const Text('이메일 전송',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      ),
                     ),
                   ],
                 ),

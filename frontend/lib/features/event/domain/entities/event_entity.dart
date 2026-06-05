@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smart_calendar/core/theme/app_theme.dart';
 
 enum EventCategory {
+  school,
   personal,
   work,
   health,
@@ -11,6 +12,7 @@ enum EventCategory {
   String get label {
     switch (this) {
       case EventCategory.personal: return '개인';
+      case EventCategory.school: return '학교';
       case EventCategory.work: return '업무';
       case EventCategory.health: return '건강';
       case EventCategory.social: return '소셜';
@@ -21,6 +23,7 @@ enum EventCategory {
   Color get color {
     switch (this) {
       case EventCategory.personal: return AppColors.eventPersonal;
+      case EventCategory.school: return AppColors.accentGreen;
       case EventCategory.work: return AppColors.eventWork;
       case EventCategory.health: return AppColors.eventHealth;
       case EventCategory.social: return AppColors.eventSocial;

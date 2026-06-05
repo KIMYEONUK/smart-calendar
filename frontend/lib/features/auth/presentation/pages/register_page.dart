@@ -94,7 +94,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: const Color(0xFFF5F3F0),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         leading: IconButton(
@@ -121,7 +121,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '아래 정보를 입력해 SmartCalendar를 시작하세요.',
+                  '아래 정보를 입력해 LeaveIt를 시작하세요.',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 32),
@@ -270,28 +270,43 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   const SizedBox(height: 16),
                 ],
 
-                FilledButton(
-                  onPressed: isLoading ? null : _register,
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2.5, color: Colors.white),
-                        )
-                      : const Text('계정 만들기'),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('이미 계정이 있으신가요?',
-                        style: theme.textTheme.bodySmall),
-                    TextButton(
-                      onPressed: () => context.go(AppRoutes.login),
-                      child: const Text('로그인'),
+                Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAE8E5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TextButton(
+                    onPressed: isLoading ? null : _register,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
-                  ],
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2.5, color: Colors.black54),
+                          )
+                        : const Text('계정 만들기',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () => context.go(AppRoutes.login),
+                  child: const Text(
+                    '이미 계정이 있으신가요?',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.black38,
+                      decoration: TextDecoration.underline,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),
@@ -344,7 +359,6 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -352,11 +366,35 @@ class _Field extends StatelessWidget {
       keyboardType: keyboardType,
       onFieldSubmitted: onFieldSubmitted,
       validator: validator,
-      style: Theme.of(context).textTheme.bodyLarge,
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black87),
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: cs.onSurfaceVariant),
+        hintText: label,
+        hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
+        prefixIcon: Icon(icon, size: 20, color: Colors.black38),
         suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: const Color(0xFFEAE8E5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.black26, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFFF4757), width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFFF4757), width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
@@ -376,22 +414,31 @@ class _CalendarDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return DropdownButtonFormField<String>(
-      value: value,
-      hint: Text(
-        '캘린더를 선택해주세요 (선택)',
-        style: TextStyle(
-            color: cs.onSurfaceVariant.withValues(alpha: 0.6), fontSize: 15),
-      ),
-      decoration: InputDecoration(
-        prefixIcon: Icon(Icons.calendar_today_outlined,
-            size: 20, color: cs.onSurfaceVariant),
-      ),
-      items: options
-          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-          .toList(),
-      onChanged: onChanged,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((option) {
+        final isSelected = value == option;
+        return GestureDetector(
+          onTap: () => onChanged(option),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.black87 : const Color(0xFFEAE8E5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              option,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                color: isSelected ? Colors.white : Colors.black54,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

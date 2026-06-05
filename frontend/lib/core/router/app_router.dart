@@ -6,6 +6,7 @@ import 'package:smart_calendar/features/auth/presentation/pages/find_account_pag
 import 'package:smart_calendar/features/auth/presentation/pages/landing_page.dart';
 import 'package:smart_calendar/features/auth/presentation/pages/login_page.dart';
 import 'package:smart_calendar/features/auth/presentation/pages/register_page.dart';
+import 'package:smart_calendar/features/auth/domain/entities/user_entity.dart';
 import 'package:smart_calendar/features/auth/presentation/providers/auth_provider.dart';
 import 'package:smart_calendar/features/calendar/presentation/pages/calendar_page.dart';
 import 'package:smart_calendar/features/event/presentation/pages/create_event_page.dart';
@@ -29,11 +30,12 @@ class AppRoutes {
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final listenable = _AuthStateListenable(ref);
   return GoRouter(
     initialLocation: AppRoutes.home,
-    refreshListenable: _AuthStateListenable(ref),
+    refreshListenable: listenable,
     redirect: (context, state) {
-      final authState = ref.read(authNotifierProvider);
+      final authState = listenable.authState;
       if (authState.isLoading) return null;
 
       final isLoggedIn = authState.value != null;
@@ -104,8 +106,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 // ── Auth State Listenable ─────────────────────────────────────
 class _AuthStateListenable extends ChangeNotifier {
+  AsyncValue<UserEntity?> authState = const AsyncLoading();
+
   _AuthStateListenable(Ref ref) {
-    ref.listen(authNotifierProvider, (prev, next) => notifyListeners());
+    ref.listen(authNotifierProvider, (prev, next) {
+      authState = next;
+      notifyListeners();
+    });
   }
 }
 

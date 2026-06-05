@@ -13,9 +13,9 @@ final dioClientProvider = Provider<Dio>((ref) {
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
+      validateStatus: (status) => status != null && status < 500,
     ),
   );
-
   dio.interceptors.add(_AuthInterceptor(dio));
   return dio;
 });
@@ -27,6 +27,7 @@ final secureStorageProvider = Provider<FlutterSecureStorage>(
 class _AuthInterceptor extends Interceptor {
   final Dio _dio;
   final _storage = const FlutterSecureStorage();
+  bool _isRefreshing = false;
 
   _AuthInterceptor(this._dio);
 
@@ -47,7 +48,8 @@ class _AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    if (err.response?.statusCode == 401) {
+    if (err.response?.statusCode == 401 && !_isRefreshing) {
+      _isRefreshing = true;
       try {
         final refreshToken = await _storage.read(key: _refreshTokenKey);
         if (refreshToken == null) {
@@ -55,7 +57,11 @@ class _AuthInterceptor extends Interceptor {
           return;
         }
 
-        final response = await _dio.post(
+        final refreshDio = Dio(BaseOptions(
+          baseUrl: ApiEndpoints.baseUrl,
+          validateStatus: (status) => status != null && status < 500,
+        ));
+        final response = await refreshDio.post(
           ApiEndpoints.refreshToken,
           data: {'refresh_token': refreshToken},
         );
@@ -63,15 +69,18 @@ class _AuthInterceptor extends Interceptor {
         final newAccessToken = response.data['access_token'] as String;
         await _storage.write(key: _accessTokenKey, value: newAccessToken);
 
-        final retryOptions = err.requestOptions
-          ..headers['Authorization'] = 'Bearer $newAccessToken';
-        final retryResponse = await _dio.fetch(retryOptions);
+        err.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+        final retryResponse = await _dio.fetch(err.requestOptions);
         handler.resolve(retryResponse);
         return;
       } catch (_) {
         await _storage.deleteAll();
+        handler.next(err);
+      } finally {
+        _isRefreshing = false;
       }
+    } else {
+      handler.next(err);
     }
-    handler.next(err);
   }
 }

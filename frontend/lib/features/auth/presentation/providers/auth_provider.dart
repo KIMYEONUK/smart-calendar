@@ -49,10 +49,18 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> logout() async {
-    await AsyncValue.guard(
-      () => ref.read(authRepositoryProvider).logout(),
-    );
-    state = const AsyncData(null);
+    print("=== LOGOUT START ===");
+    state = const AsyncLoading();
+    print("=== STATE SET TO LOADING ===");
+    try {
+      await ref.read(authRepositoryProvider).logout();
+      print("=== LOGOUT API SUCCESS ===");
+    } catch (e) {
+      print("=== LOGOUT ERROR: \$e ===");
+    } finally {
+      state = const AsyncData(null);
+      print("=== STATE SET TO NULL ===");
+    }
   }
 
   Future<bool> findPassword(String email) async {

@@ -120,13 +120,14 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                   child: Row(
                     children: [
                       Text(DateFormat("M월 d일 (E)", "ko").format(day), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+
                       if (holName != null) ...[
                         const SizedBox(width: 8),
                         Text(holName, style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600)),
                       ],
                       const Spacer(),
                       TextButton.icon(
-                        onPressed: () { Navigator.pop(ctx); context.push(AppRoutes.createEvent); },
+                        onPressed: () { Navigator.pop(ctx); context.push(AppRoutes.createEvent, extra: {'startAt': _selectedDay, 'endAt': _selectedDay}); },
                         icon: const Icon(Icons.add, size: 16),
                         label: const Text("일정 추가"),
                       ),
@@ -277,14 +278,14 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
             },
             onEventTap: (e) => context.push(AppRoutes.eventDetail(e.id)),
             onEventDelete: (e) => ref.read(eventNotifierProvider.notifier).deleteEvent(e.id),
-            onAddEvent: () => context.push(AppRoutes.createEvent),
+            onAddEvent: () => context.push(AppRoutes.createEvent, extra: {'startAt': _selectedDay, 'endAt': _selectedDay}),
           ),
           ongoing.isEmpty ? _EmptyOngoingState() : _OngoingCheckList(events: ongoing),
         ],
       ),
       drawer: _CalendarDrawer(),
       floatingActionButton: FabSpeedDial(
-        onAddEvent: () => context.push(AppRoutes.createEvent),
+        onAddEvent: () => context.push(AppRoutes.createEvent, extra: {'startAt': _selectedDay, 'endAt': _selectedDay}),
         onOcr: () => context.push(AppRoutes.ocrScan),
       ),
     );
@@ -416,7 +417,7 @@ class _NaverCalendarView extends StatelessWidget {
               final pageCalStart = pageFirstOfMonth.subtract(Duration(days: pageStartOffset));
               final pageMultiDayLayout = _buildMultiDayLayout(pageCalStart, 42);
               return Padding(
-                key: page == 1200 ? calendarKey : null,
+                key: calendarKey,
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: _buildCalendarGrid(context, pageCalStart, 42, pageMultiDayLayout, pageMonth),
               );
@@ -491,7 +492,7 @@ class _NaverCalendarView extends StatelessWidget {
                       },
                       onLongPressEnd: (_) => onLongPressEnd(day),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           if (holName != null && isThisMonth)
                             Text(holName, style: const TextStyle(fontSize: 6, color: Colors.red, height: 1), maxLines: 1, overflow: TextOverflow.ellipsis)
@@ -801,6 +802,7 @@ class _CalendarDrawer extends ConsumerWidget {
               leading: const Icon(Icons.logout_rounded, color: Colors.red),
               title: const Text("로그아웃", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
               onTap: () async {
+                final notifier = ref.read(authNotifierProvider.notifier);
                 Navigator.pop(context);
                 final confirm = await showDialog<bool>(
                   context: context,
@@ -813,8 +815,8 @@ class _CalendarDrawer extends ConsumerWidget {
                     ],
                   ),
                 );
-                if (confirm == true && context.mounted) {
-                  await ref.read(authNotifierProvider.notifier).logout();
+                if (confirm == true) {
+                  notifier.logout();
                 }
               },
             ),
@@ -836,8 +838,23 @@ class _CalendarList extends ConsumerWidget {
       children: [
         ...calendars.map((cal) => ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          leading: Container(width: 16, height: 16, decoration: BoxDecoration(color: cal.color, borderRadius: BorderRadius.circular(4))),
-          title: Text(cal.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+          leading: GestureDetector(
+            onTap: () => ref.read(calendarProvider.notifier).toggleVisibility(cal.id),
+            child: Container(
+              width: 20, height: 20,
+              decoration: BoxDecoration(
+                color: cal.isVisible ? cal.color : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: cal.color, width: 2),
+              ),
+              child: cal.isVisible ? const Icon(Icons.check_rounded, size: 14, color: Colors.white) : null,
+            ),
+          ),
+          title: Text(cal.name, style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+            color: cal.isVisible ? null : cs.onSurfaceVariant,
+          )),
+          onTap: () => ref.read(calendarProvider.notifier).toggleVisibility(cal.id),
           trailing: ["personal","school","work","health"].contains(cal.id) ? null
               : GestureDetector(
                   onTap: () => ref.read(calendarProvider.notifier).remove(cal.id),

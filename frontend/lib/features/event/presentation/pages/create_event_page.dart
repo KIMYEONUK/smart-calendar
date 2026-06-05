@@ -50,8 +50,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   void initState() {
     super.initState();
     final form = _EventForm();
-    if (widget.initialStartAt != null) form.startAt = widget.initialStartAt!;
-    if (widget.initialEndAt != null) form.endAt = widget.initialEndAt;
+    if (widget.initialStartAt != null) {
+      final d = widget.initialStartAt!;
+      form.startAt = DateTime(d.year, d.month, d.day, 9, 0);
+    }
+    if (widget.initialEndAt != null) {
+      final d = widget.initialEndAt!;
+      form.endAt = DateTime(d.year, d.month, d.day, 10, 0);
+    }
     _forms = [form];
   }
 
@@ -255,7 +261,14 @@ class _EventFormCardState extends State<_EventFormCard> {
       setState(() {
         if (isStart) {
           f.startAt = combined;
+          if (f.endAt != null && f.endAt!.isBefore(combined)) {
+            f.endAt = combined.add(const Duration(hours: 1));
+          }
         } else {
+          if (combined.isBefore(f.startAt)) {
+            _showEndDateError();
+            return;
+          }
           f.endAt = combined;
         }
       });
@@ -263,12 +276,34 @@ class _EventFormCardState extends State<_EventFormCard> {
       setState(() {
         if (isStart) {
           f.startAt = picked;
+          if (f.endAt != null && f.endAt!.isBefore(picked)) {
+            f.endAt = picked;
+          }
         } else {
+          if (picked.isBefore(f.startAt)) {
+            _showEndDateError();
+            return;
+          }
           f.endAt = picked;
         }
       });
     }
     widget.onUpdate();
+  }
+
+  void _showEndDateError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          '종료일은 시작일보다 빠를 수 없습니다',
+          style: TextStyle(color: Color(0xFFB00020), fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: const Color(0xFFFFE4E8),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override

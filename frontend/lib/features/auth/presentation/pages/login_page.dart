@@ -62,7 +62,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: const Color(0xFFF5F3F0),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         leading: IconButton(
@@ -90,7 +90,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'SmartCalendar 계정으로 로그인하세요.',
+                  'LeaveIt 계정으로 로그인하세요.',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 36),
@@ -137,9 +137,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                 Align(
                   alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => context.push(AppRoutes.findAccount),
-                    child: const Text('비밀번호를 잊으셨나요?'),
+                  child: GestureDetector(
+                    onTap: () => context.push(AppRoutes.findAccount),
+                    child: const Text(
+                      '비밀번호를 잊으셨나요?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.black38,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
                   ),
                 ),
 
@@ -149,23 +156,43 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ] else
                   const SizedBox(height: 8),
 
-                FilledButton(
-                  onPressed: isLoading ? null : _login,
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2.5, color: Colors.white),
-                        )
-                      : const Text('로그인'),
+                Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAE8E5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TextButton(
+                    onPressed: isLoading ? null : _login,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2.5, color: Colors.black54),
+                          )
+                        : const Text('로그인',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  ),
                 ),
-                const SizedBox(height: 10),
-
-                OutlinedButton(
-                  onPressed:
-                      isLoading ? null : () => context.push(AppRoutes.register),
-                  child: const Text('계정 만들기'),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: isLoading ? null : () => context.push(AppRoutes.register),
+                  child: Text(
+                    '아직 계정이 없으십니까?',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.black38,
+                      decoration: TextDecoration.underline,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),
@@ -241,7 +268,6 @@ class _AuthField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -249,11 +275,35 @@ class _AuthField extends StatelessWidget {
       onFieldSubmitted: onFieldSubmitted,
       onChanged: onChanged,
       validator: validator,
-      style: Theme.of(context).textTheme.bodyLarge,
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black87),
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: cs.onSurfaceVariant),
+        hintText: label,
+        hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
+        prefixIcon: Icon(icon, size: 20, color: Colors.black38),
         suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: const Color(0xFFEAE8E5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.black26, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFFF4757), width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFFF4757), width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }

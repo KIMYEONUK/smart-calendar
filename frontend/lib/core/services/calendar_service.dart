@@ -7,14 +7,18 @@ class CalendarItem {
   final String id;
   final String name;
   final int colorValue;
+  final bool isVisible;
 
-  CalendarItem({required this.id, required this.name, required this.colorValue});
+  CalendarItem({required this.id, required this.name, required this.colorValue, this.isVisible = true});
 
   Color get color => Color(colorValue);
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'color': colorValue};
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'color': colorValue, 'visible': isVisible};
   factory CalendarItem.fromJson(Map<String, dynamic> j) =>
-      CalendarItem(id: j['id'], name: j['name'], colorValue: j['color']);
+      CalendarItem(id: j['id'], name: j['name'], colorValue: j['color'], isVisible: j['visible'] ?? true);
+  
+  CalendarItem copyWith({bool? isVisible}) =>
+      CalendarItem(id: id, name: name, colorValue: colorValue, isVisible: isVisible ?? this.isVisible);
 }
 
 class CalendarNotifier extends Notifier<List<CalendarItem>> {
@@ -62,6 +66,11 @@ class CalendarNotifier extends Notifier<List<CalendarItem>> {
   Future<void> remove(String id) async {
     if (['personal', 'school', 'work', 'health'].contains(id)) return;
     state = state.where((e) => e.id != id).toList();
+    await _save();
+  }
+
+  Future<void> toggleVisibility(String id) async {
+    state = state.map((e) => e.id == id ? e.copyWith(isVisible: !e.isVisible) : e).toList();
     await _save();
   }
 }
